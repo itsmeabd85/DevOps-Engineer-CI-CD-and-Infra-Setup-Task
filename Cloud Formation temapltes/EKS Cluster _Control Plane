@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TaskInfra Production - Create EKS Cluster (Control Plane Only)
+
+Parameters:
+  VpcId:
+    Type: String
+
+  SubnetIds:
+    Type: List<String>
+
+  ClusterName:
+    Type: String
+    Default: TaskInfra-Prod-EKS-Cluster
+
+Resources:
+  TaskInfraProdEKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TaskInfra-Prod-EKS-ClusterRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-EKS-ClusterRole
+
+  TaskInfraProdEKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      Version: "1.29"
+      RoleArn: !GetAtt TaskInfraProdEKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds: !Ref SubnetIds
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: false
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-EKS-Cluster
+
+Outputs:
+  ClusterName:
+    Value: !Ref TaskInfraProdEKSCluster
+    Export:
+      Name: TaskInfra-Prod-EKS-ClusterName
+
+  ClusterArn:
+    Value: !GetAtt TaskInfraProdEKSCluster.Arn
+    Export:
+      Name: TaskInfra-Prod-EKS-ClusterArn
+
+  ClusterRole:
+    Value: !Ref TaskInfraProdEKSClusterRole
+    Export:
+      Name: TaskInfra-Prod-EKS-ClusterRole
