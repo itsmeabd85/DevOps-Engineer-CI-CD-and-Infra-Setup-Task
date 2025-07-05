@@ -151,3 +151,4 @@ Outputs:
     Value: !Ref TaskInfraProdPrivateSubnet1
   PrivateSubnet2:
     Value: !Ref TaskInfraProdPrivateSubnet2
+
