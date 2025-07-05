@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TaskInfra Production - VPC, Subnets, IGW, NAT, and Route Tables
+
+Resources:
+  TaskInfraProdVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-VPC
+
+  TaskInfraProdIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-IGW
+
+  TaskInfraProdAttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      InternetGatewayId: !Ref TaskInfraProdIGW
+
+  # Subnets
+  TaskInfraProdPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PublicSubnet-AZ1
+
+  TaskInfraProdPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PublicSubnet-AZ2
+
+  TaskInfraProdPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PrivateSubnet-AZ1
+
+  TaskInfraProdPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PrivateSubnet-AZ2
+
+  # NAT Gateway
+  TaskInfraProdNATEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  TaskInfraProdNATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt TaskInfraProdNATEIP.AllocationId
+      SubnetId: !Ref TaskInfraProdPublicSubnet1
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-NATGateway
+
+  # Public Route Table
+  TaskInfraProdPublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PublicRT
+
+  TaskInfraProdPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: TaskInfraProdAttachIGW
+    Properties:
+      RouteTableId: !Ref TaskInfraProdPublicRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref TaskInfraProdIGW
+
+  TaskInfraProdPublicSubnet1Assoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref TaskInfraProdPublicSubnet1
+      RouteTableId: !Ref TaskInfraProdPublicRT
+
+  TaskInfraProdPublicSubnet2Assoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref TaskInfraProdPublicSubnet2
+      RouteTableId: !Ref TaskInfraProdPublicRT
+
+  # Private Route Table
+  TaskInfraProdPrivateRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TaskInfraProdVPC
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-PrivateRT
+
+  TaskInfraProdPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref TaskInfraProdPrivateRT
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref TaskInfraProdNATGateway
+
+  TaskInfraProdPrivateSubnet1Assoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref TaskInfraProdPrivateSubnet1
+      RouteTableId: !Ref TaskInfraProdPrivateRT
+
+  TaskInfraProdPrivateSubnet2Assoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref TaskInfraProdPrivateSubnet2
+      RouteTableId: !Ref TaskInfraProdPrivateRT
+
+Outputs:
+  VPCId:
+    Value: !Ref TaskInfraProdVPC
+  PublicSubnet1:
+    Value: !Ref TaskInfraProdPublicSubnet1
+  PublicSubnet2:
+    Value: !Ref TaskInfraProdPublicSubnet2
+  PrivateSubnet1:
+    Value: !Ref TaskInfraProdPrivateSubnet1
+  PrivateSubnet2:
+    Value: !Ref TaskInfraProdPrivateSubnet2
