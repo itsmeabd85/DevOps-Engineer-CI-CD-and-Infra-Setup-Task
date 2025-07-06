@@ -51,8 +51,7 @@ Resources:
       AmiType: AL2_x86_64
       DiskSize: 20
       Tags:
-        - Key: Name
-          Value: TaskInfra-Prod-NodeGroup
+        Name: TaskInfra-Prod-NodeGroup
 
 Outputs:
   NodeGroupName:
