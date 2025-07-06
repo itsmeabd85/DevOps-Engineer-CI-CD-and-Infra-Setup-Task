@@ -4,11 +4,11 @@ Description: TaskInfra Production - Create EKS Cluster (Control Plane Only)
 Parameters:
   VpcId:
     Type: String
-    Description: Enter the VPC ID where the EKS cluster will be deployed
+    Description: VPC ID for the EKS cluster
 
   SubnetIds:
     Type: CommaDelimitedList
-    Description: Enter two subnet IDs separated by commas (e.g., subnet-1234abcd,subnet-5678efgh)
+    Description: Two subnet IDs (comma-separated)
 
   ClusterName:
     Type: String
@@ -16,7 +16,7 @@ Parameters:
     Description: Name for the EKS Cluster
 
 Resources:
-  TaskInfraProdEKSClusterRole:
+  EKSClusterRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: TaskInfra-Prod-EKS-ClusterRole
@@ -33,32 +33,34 @@ Resources:
         - Key: Name
           Value: TaskInfra-Prod-EKS-ClusterRole
 
-  TaskInfraProdEKSCluster:
+  EKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
       Name: !Ref ClusterName
       Version: "1.29"
-      RoleArn: !GetAtt TaskInfraProdEKSClusterRole.Arn
+      RoleArn: !GetAtt EKSClusterRole.Arn
       ResourcesVpcConfig:
         SubnetIds: !Ref SubnetIds
         EndpointPublicAccess: true
         EndpointPrivateAccess: false
+      AccessConfig:
+        AuthenticationMode: "API_AND_CONFIG_MAP"
       Tags:
         - Key: Name
           Value: TaskInfra-Prod-EKS-Cluster
 
 Outputs:
   ClusterName:
-    Value: !Ref TaskInfraProdEKSCluster
+    Value: !Ref EKSCluster
     Export:
       Name: TaskInfra-Prod-EKS-ClusterName
 
   ClusterArn:
-    Value: !GetAtt TaskInfraProdEKSCluster.Arn
+    Value: !GetAtt EKSCluster.Arn
     Export:
       Name: TaskInfra-Prod-EKS-ClusterArn
 
   ClusterRole:
-    Value: !Ref TaskInfraProdEKSClusterRole
+    Value: !Ref EKSClusterRole
     Export:
       Name: TaskInfra-Prod-EKS-ClusterRole
