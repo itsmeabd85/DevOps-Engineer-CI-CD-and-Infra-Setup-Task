@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TaskInfra Production - EKS Managed Node Group
+
+Parameters:
+  ClusterName:
+    Type: String
+    Description: Name of the existing EKS cluster
+
+  SubnetIds:
+    Type: CommaDelimitedList
+    Description: Two private subnet IDs (comma-separated)
+
+  NodeInstanceRoleName:
+    Type: String
+    Default: TaskInfra-Prod-EKS-NodeInstanceRole
+    Description: IAM role name for EKS worker nodes
+
+Resources:
+  NodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref NodeInstanceRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-EKS-NodeInstanceRole
+
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref ClusterName
+      NodegroupName: TaskInfra-Prod-NodeGroup
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      Subnets: !Ref SubnetIds
+      ScalingConfig:
+        MinSize: 1
+        MaxSize: 3
+        DesiredSize: 2
+      InstanceTypes:
+        - t3.medium
+      AmiType: AL2_x86_64
+      DiskSize: 20
+      Tags:
+        - Key: Name
+          Value: TaskInfra-Prod-NodeGroup
+
+Outputs:
+  NodeGroupName:
+    Value: !Ref EKSNodeGroup
+
+  NodeRole:
+    Value: !Ref NodeInstanceRole
