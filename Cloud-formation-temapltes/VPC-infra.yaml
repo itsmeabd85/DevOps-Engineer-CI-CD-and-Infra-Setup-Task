@@ -36,6 +36,10 @@ Resources:
       Tags:
         - Key: Name
           Value: TaskInfra-Prod-PublicSubnet-AZ1
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/TaskInfra-Prod-EKS-Cluster
+          Value: shared
 
   TaskInfraProdPublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -47,6 +51,10 @@ Resources:
       Tags:
         - Key: Name
           Value: TaskInfra-Prod-PublicSubnet-AZ2
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/TaskInfra-Prod-EKS-Cluster
+          Value: shared
 
   TaskInfraProdPrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -57,6 +65,10 @@ Resources:
       Tags:
         - Key: Name
           Value: TaskInfra-Prod-PrivateSubnet-AZ1
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/TaskInfra-Prod-EKS-Cluster
+          Value: shared
 
   TaskInfraProdPrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -67,6 +79,10 @@ Resources:
       Tags:
         - Key: Name
           Value: TaskInfra-Prod-PrivateSubnet-AZ2
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: kubernetes.io/cluster/TaskInfra-Prod-EKS-Cluster
+          Value: shared
 
   # NAT Gateway
   TaskInfraProdNATEIP:
@@ -151,4 +167,3 @@ Outputs:
     Value: !Ref TaskInfraProdPrivateSubnet1
   PrivateSubnet2:
     Value: !Ref TaskInfraProdPrivateSubnet2
-
