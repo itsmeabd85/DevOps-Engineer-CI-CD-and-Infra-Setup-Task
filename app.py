@@ -9,7 +9,7 @@ def home():
         <title>DevOps CICD App</title>
         <style>
           body {
-            background-color: #00aa00; /* Green background */
+            background-color: #00aa00;
             color: black;
             font-family: Arial, sans-serif;
             display: flex;
@@ -35,4 +35,4 @@ def home():
     """
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5001)
