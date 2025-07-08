@@ -29,7 +29,7 @@ def home():
         </style>
       </head>
       <body>
-        <h1>🚀 Hello! This is a sample DevOps - CI/CD Project</h1>
+        <h1>🚀 Hello! This is a sample DevOps - CI/CD Project-Task </h1>
       </body>
     </html>
     """
