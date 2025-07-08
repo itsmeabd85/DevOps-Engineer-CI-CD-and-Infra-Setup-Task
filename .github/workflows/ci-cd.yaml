@@ -22,9 +22,8 @@ jobs:
           aws-region: ap-south-1
           role-session-name: github-actions-${{ github.run_id }}
 
-      - name: Fetch DockerHub credentials from SSM
+      - name: Fetch DockerHub credentials from AWS SSM Parameter Store
         run: |
-          set -e
           echo "DOCKER_USERNAME=$(aws ssm get-parameter --name '/devops/dockerhub_username' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=$(aws ssm get-parameter --name '/devops/dockerhub_password' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
 
@@ -39,7 +38,7 @@ jobs:
 
       - name: Install kubectl
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          curl -LO "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
           kubectl version --client
@@ -54,12 +53,11 @@ jobs:
         run: |
           kubectl apply -f k8s/staging/
           DEPLOYMENT_NAME=$(kubectl get deploy -n staging -o jsonpath='{.items[0].metadata.name}')
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n staging --timeout=90s
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n staging --timeout=120s
 
       - name: Deploy to production
         if: github.ref == 'refs/heads/main'
         run: |
           kubectl apply -f k8s/production/
           DEPLOYMENT_NAME=$(kubectl get deploy -n production -o jsonpath='{.items[0].metadata.name}')
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n production --timeout=90s
-          
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n production --timeout=120s
