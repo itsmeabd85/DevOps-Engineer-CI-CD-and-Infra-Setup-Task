@@ -40,6 +40,7 @@ jobs:
 
       - name: Fetch DockerHub credentials from SSM
         run: |
+          set -e
           echo "DOCKER_USERNAME=$(aws ssm get-parameter --name '/devops/dockerhub_username' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=$(aws ssm get-parameter --name '/devops/dockerhub_password' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
 
@@ -54,10 +55,26 @@ jobs:
 
       - name: Install kubectl (stable version)
         run: |
-          KUBECTL_VERSION=$(curl -s https://dl.k8s.io/release/stable.txt)
-          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          set -euo pipefail
+          echo "ℹ️ Fetching latest stable kubectl version..."
+          
+          # Try multiple times to get version
+          for i in {1..3}; do
+            KUBECTL_VERSION=$(curl -sfL https://dl.k8s.io/release/stable.txt) && break
+            sleep 5
+            echo "⚠️ Attempt $i failed, retrying..."
+          done
+          
+          if [ -z "$KUBECTL_VERSION" ]; then
+            echo "❌ Failed to fetch kubectl version after 3 attempts"
+            exit 1
+          fi
+          
+          echo "✓ Downloading kubectl version: $KUBECTL_VERSION"
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" --fail --retry 3
+          
           chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/kubectl
+          sudo mv kubectl /usr/local/bin/
           kubectl version --client --short
 
       - name: Update kubeconfig for EKS
