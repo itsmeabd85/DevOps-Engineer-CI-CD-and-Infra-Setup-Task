@@ -1,4 +1,4 @@
-name: CI/CD Pipeline for DevOps Task
+name: CI/CD Pipeline - Build and Tools
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  build-only:
     runs-on: ubuntu-latest
     env:
       IMAGE_NAME: devops_cicd_task_flask_app
@@ -20,49 +20,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Configure AWS credentials via OIDC
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::006478238453:role/oidc-githib-iam-role
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-${{ github.run_id }}
 
-      - name: Fetch DockerHub credentials from AWS SSM
+      - name: Fetch DockerHub credentials from AWS SSM Parameter Store
         run: |
           echo "DOCKER_USERNAME=$(aws ssm get-parameter --name '/devops/dockerhub_username' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=$(aws ssm get-parameter --name '/devops/dockerhub_password' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
 
-      - name: Docker login
+      - name: Log in to Docker Hub
         run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
       - name: Build Docker image
         run: docker build -t $DOCKER_USERNAME/$IMAGE_NAME:${{ github.sha }} .
 
-      - name: Push Docker image to Docker Hub
+      - name: Push Docker image
         run: docker push $DOCKER_USERNAME/$IMAGE_NAME:${{ github.sha }}
 
-      - name: Install kubectl
+      - name: Install kubectl (latest stable)
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
-          kubectl version --client
+          kubectl version --client --short
 
-      - name: Update kubeconfig for EKS
-        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name TaskInfra-Prod-EKS-Cluster
-
-      - name: Verify cluster access
-        run: kubectl get nodes
-
-      - name: Deploy to staging
+      - name: Install AWS CLI (latest v2)
         run: |
-          kubectl apply -f k8s/staging/
-          DEPLOYMENT_NAME=$(kubectl get deploy -n staging -o jsonpath='{.items[0].metadata.name}')
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n staging --timeout=120s
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
 
-      - name: Deploy to production
-        if: github.ref == 'refs/heads/main'
+      - name: Install eksctl (latest)
         run: |
-          kubectl apply -f k8s/production/
-          DEPLOYMENT_NAME=$(kubectl get deploy -n production -o jsonpath='{.items[0].metadata.name}')
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n production --timeout=120s
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin/
+          eksctl version
