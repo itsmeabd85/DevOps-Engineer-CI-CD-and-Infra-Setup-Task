@@ -1,33 +1,44 @@
-name: CI/CD Pipeline - Build and Tools
+name: CI/CD Pipeline for DevOps Task
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
-  build-only:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     env:
       IMAGE_NAME: devops_cicd_task_flask_app
       AWS_REGION: ap-south-1
+      AWS_DEFAULT_REGION: ap-south-1
+
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install AWS CLI (latest version)
+        run: |
+          sudo apt update
+          sudo apt install -y unzip curl
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
+
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v2.2.0
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::006478238453:role/oidc-githib-iam-role
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-${{ github.run_id }}
 
-      - name: Fetch DockerHub credentials from AWS SSM Parameter Store
+      - name: Fetch DockerHub credentials from SSM
         run: |
           echo "DOCKER_USERNAME=$(aws ssm get-parameter --name '/devops/dockerhub_username' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
           echo "DOCKER_PASSWORD=$(aws ssm get-parameter --name '/devops/dockerhub_password' --with-decryption --query 'Parameter.Value' --output text)" >> $GITHUB_ENV
@@ -41,24 +52,29 @@ jobs:
       - name: Push Docker image
         run: docker push $DOCKER_USERNAME/$IMAGE_NAME:${{ github.sha }}
 
-      - name: Install kubectl (latest stable)
+      - name: Install kubectl (stable version)
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          KUBECTL_VERSION=$(curl -s https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
+          sudo mv kubectl /usr/local/bin/kubectl
           kubectl version --client --short
 
-      - name: Install AWS CLI (latest v2)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          aws --version
+      - name: Update kubeconfig for EKS
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name TaskInfra-Prod-EKS-Cluster
 
-      - name: Install eksctl (latest)
+      - name: Verify EKS cluster access
+        run: kubectl get nodes
+
+      - name: Deploy to staging
         run: |
-          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-          sudo mv /tmp/eksctl /usr/local/bin/
-          eksctl version
+          kubectl apply -f k8s/staging/
+          DEPLOYMENT_NAME=$(kubectl get deploy -n staging -o jsonpath='{.items[0].metadata.name}')
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n staging --timeout=120s
+
+      - name: Deploy to production
+        if: github.ref == 'refs/heads/main'
+        run: |
+          kubectl apply -f k8s/production/
+          DEPLOYMENT_NAME=$(kubectl get deploy -n production -o jsonpath='{.items[0].metadata.name}')
+          kubectl rollout status deployment/$DEPLOYMENT_NAME -n production --timeout=120s
