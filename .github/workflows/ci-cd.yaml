@@ -75,7 +75,7 @@ jobs:
           
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
-          kubectl version --client --short
+          kubectl version --client 
 
       - name: Update kubeconfig for EKS
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name TaskInfra-Prod-EKS-Cluster
