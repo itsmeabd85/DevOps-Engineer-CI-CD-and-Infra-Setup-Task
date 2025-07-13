@@ -1,9 +1,9 @@
-name: CI/CD Pipeline for DevOps Task
+name: CI/CD Pipeline for Staging
 
 on:
   push:
     branches:
-      - main
+      - staging
 
 jobs:
   build-and-deploy:
@@ -15,14 +15,14 @@ jobs:
       AWS_DEFAULT_REGION: ap-south-1
 
     permissions:
-      id-token: write   # Required for OIDC
+      id-token: write
       contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install AWS CLI (latest version)
+      - name: Install AWS CLI
         run: |
           sudo apt update
           sudo apt install -y unzip curl
@@ -47,52 +47,25 @@ jobs:
       - name: Log in to Docker Hub
         run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
-      # ⬇️ Build & Push :staging image
       - name: Build & Push Docker image for STAGING
         run: |
           docker build -t $DOCKER_USERNAME/$IMAGE_NAME:staging .
           docker push $DOCKER_USERNAME/$IMAGE_NAME:staging
 
-      # ⬇️ Build & Push :prod image
-      - name: Build & Push Docker image for PRODUCTION
-        run: |
-          docker build -t $DOCKER_USERNAME/$IMAGE_NAME:prod .
-          docker push $DOCKER_USERNAME/$IMAGE_NAME:prod
-
-      - name: Install kubectl (stable version)
+      - name: Install kubectl
         run: |
           set -euo pipefail
-          echo "ℹ️ Fetching latest stable kubectl version..."
-          for i in {1..3}; do
-            KUBECTL_VERSION=$(curl -sfL https://dl.k8s.io/release/stable.txt) && break
-            sleep 5
-            echo "⚠️ Attempt $i failed, retrying..."
-          done
-          if [ -z "$KUBECTL_VERSION" ]; then
-            echo "❌ Failed to fetch kubectl version after 3 attempts"
-            exit 1
-          fi
-          echo "✓ Downloading kubectl version: $KUBECTL_VERSION"
-          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" --fail --retry 3
+          KUBECTL_VERSION=$(curl -sfL https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           chmod +x kubectl
           sudo mv kubectl /usr/local/bin/
-          kubectl version --client 
+          kubectl version --client
 
       - name: Update kubeconfig for EKS
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name TaskInfra-Prod-EKS-Cluster
 
-      - name: Verify EKS cluster access
-        run: kubectl get nodes
-
-      - name: Deploy to staging
+      - name: Deploy to STAGING
         run: |
           kubectl apply -f k8s/staging/
           DEPLOYMENT_NAME=$(kubectl get deploy -n staging -o jsonpath='{.items[0].metadata.name}')
           kubectl rollout status deployment/$DEPLOYMENT_NAME -n staging --timeout=120s
-
-      - name: Deploy to production
-        if: github.ref == 'refs/heads/main'
-        run: |
-          kubectl apply -f k8s/production/
-          DEPLOYMENT_NAME=$(kubectl get deploy -n production -o jsonpath='{.items[0].metadata.name}')
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n production --timeout=120s
