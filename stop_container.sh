@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Stop and remove the container based on image
-container_id=$(docker ps -q --filter "ancestor=abdulrajak/devops_cicd_task_flask_app:latest")
+container_id=$(docker ps -q --filter "ancestor=abdulrajak/devops_cicd_task_flask_app:staging")
 
 if [ -z "$container_id" ]; then
   echo "No running container found for this image."
