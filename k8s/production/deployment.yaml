@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: image: abdulrajak/devops_cicd_task_flask_app:prod
+        image: abdulrajak/devops_cicd_task_flask_app:prod
         ports:
         - containerPort: 5001
