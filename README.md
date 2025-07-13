@@ -59,3 +59,6 @@ Project Walkthrough link : https://drive.google.com/file/d/1mtzsI8sgDCCcPBI1HJiL
 ## 🚀 How to Access Grafana
 ```bash
 kubectl port-forward -n monitoring svc/kube-monitoring-grafana 3000:80
+
+
+<img width="1792" height="1088" alt="image" src="https://github.com/user-attachments/assets/da934a13-1ce9-469e-995e-1a30983b27a4" />
