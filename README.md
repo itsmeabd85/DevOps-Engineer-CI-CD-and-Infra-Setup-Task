@@ -3,8 +3,6 @@
 ## 🧠 Objective
 This project demonstrates a production-grade DevOps workflow to deploy a containerized Flask application with CI/CD automation, infrastructure provisioning, Kubernetes orchestration, and basic monitoring.
 
-Project Walkthrough link : https://drive.google.com/file/d/1mtzsI8sgDCCcPBI1HJiLwOaT-_f7fi13/view?usp=sharing
-
 ---
 
 ## 🔧 Tech Stack
